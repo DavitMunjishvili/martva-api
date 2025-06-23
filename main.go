@@ -10,22 +10,20 @@ import (
 	"sync"
 )
 
+//go:embed all:static
 var staticFiles embed.FS
 
-// availableDate represents a single object in the external API's JSON array.
 type availableDate struct {
 	BookingDate       string `json:"bookingDate"`
 	BookingDateStatus int    `json:"bookingDateStatus"`
 }
 
-// centerResult holds the outcome of an API call for a single center.
 type centerResult struct {
 	CenterName string          `json:"centerName"`
 	Dates      []availableDate `json:"dates"`
 	Error      string          `json:"error,omitempty"`
 }
 
-// A map of Center IDs to their corresponding city names.
 var centers = map[int]string{
 	2:  "Kutaisi",
 	3:  "Batumi",
@@ -39,7 +37,6 @@ var centers = map[int]string{
 	15: "Rustavi",
 }
 
-// fetchDatesForCenter remains the same...
 func fetchDatesForCenter(centerID int, centerName string, ch chan<- centerResult, wg *sync.WaitGroup) {
 	defer wg.Done()
 	url := fmt.Sprintf("https://api-my.sa.gov.ge/api/v1/DrivingLicensePracticalExams2/DrivingLicenseExamsDates2?CategoryCode=4&CenterId=%d", centerID)
@@ -66,7 +63,6 @@ func fetchDatesForCenter(centerID int, centerName string, ch chan<- centerResult
 	ch <- result
 }
 
-// availableDatesHandler remains the same...
 func availableDatesHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
@@ -95,11 +91,10 @@ func main() {
 
 	staticContent, err := fs.Sub(staticFiles, "static")
 	if err != nil {
-		log.Fatalf("could not create sub-filesystem: %v", err)
+		log.Fatalf("could not create sub-filesystem from embedded fs: %v", err)
 	}
 
 	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.FS(staticContent))))
-
 	mux.HandleFunc("/api/available-dates", availableDatesHandler)
 
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -107,8 +102,10 @@ func main() {
 			http.NotFound(w, r)
 			return
 		}
-		indexHTML, err := staticContent.ReadFile("index.html")
+
+		indexHTML, err := fs.ReadFile(staticContent, "index.html")
 		if err != nil {
+			log.Printf("Error reading index.html from embedded fs: %v", err)
 			http.Error(w, "index.html not found", http.StatusInternalServerError)
 			return
 		}
