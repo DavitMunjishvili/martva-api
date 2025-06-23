@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"sync"
@@ -15,6 +16,7 @@ type availableDate struct {
 }
 
 type centerResult struct {
+	CenterId   int             `json:"centerId"`
 	CenterName string          `json:"centerName"`
 	Dates      []availableDate `json:"dates"`
 	Error      string          `json:"error,omitempty"`
@@ -66,6 +68,7 @@ func fetchDatesForCenter(centerID int, centerName string, ch chan<- centerResult
 	}
 
 	result.Dates = datesResponse
+	result.CenterId = centerID
 	ch <- result
 }
 
@@ -92,10 +95,46 @@ func availableDatesHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func availableHoursHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+
+	centerId := r.URL.Query().Get("centerId")
+	examDate := r.URL.Query().Get("examDate")
+
+	if centerId == "" || examDate == "" {
+		http.Error(w, "Missing required query parameters: 'centerId' and 'examDate'", http.StatusBadRequest)
+		return
+	}
+
+	url := fmt.Sprintf("https://api-my.sa.gov.ge/api/v1/DrivingLicensePracticalExams2/DrivingLicenseExamsDateFrames2?CategoryCode=4&CenterId=%s&ExamDate=%s", centerId, examDate)
+
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
+	client := &http.Client{Transport: tr}
+
+	resp, err := client.Get(url)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Failed to fetch data from external API: %v", err), http.StatusInternalServerError)
+		return
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		w.WriteHeader(resp.StatusCode)
+		io.Copy(w, resp.Body)
+		return
+	}
+
+	io.Copy(w, resp.Body)
+}
+
 func main() {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/api/available-dates", availableDatesHandler)
+	mux.HandleFunc("/api/available-hours", availableHoursHandler)
 
 	port := "8080"
 	fmt.Printf("Starting server on http://localhost:%s\n", port)
