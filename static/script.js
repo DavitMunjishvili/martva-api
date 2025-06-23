@@ -18,7 +18,9 @@ document.addEventListener("DOMContentLoaded", () => {
       const data = await response.json();
 
       // Sort city names alphabetically for consistent order
-      const sortedCities = Object.keys(data).sort();
+      const sortedCities = Object.keys(data).sort(
+        (a, b) => data[b].dates.length - data[a].dates.length,
+      );
 
       // Loop through the sorted city names and create cards
       for (const cityName of sortedCities) {
