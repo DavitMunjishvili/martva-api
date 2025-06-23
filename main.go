@@ -2,17 +2,12 @@ package main
 
 import (
 	"crypto/tls"
-	"embed"
 	"encoding/json"
 	"fmt"
-	"io/fs"
 	"log"
 	"net/http"
 	"sync"
 )
-
-//go:embed all:static
-var staticFiles embed.FS
 
 type availableDate struct {
 	BookingDate       string `json:"bookingDate"`
@@ -100,29 +95,7 @@ func availableDatesHandler(w http.ResponseWriter, r *http.Request) {
 func main() {
 	mux := http.NewServeMux()
 
-	staticContent, err := fs.Sub(staticFiles, "static")
-	if err != nil {
-		log.Fatalf("could not create sub-filesystem from embedded fs: %v", err)
-	}
-
-	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.FS(staticContent))))
 	mux.HandleFunc("/api/available-dates", availableDatesHandler)
-
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/" {
-			http.NotFound(w, r)
-			return
-		}
-
-		indexHTML, err := fs.ReadFile(staticContent, "index.html")
-		if err != nil {
-			log.Printf("Error reading index.html from embedded fs: %v", err)
-			http.Error(w, "index.html not found", http.StatusInternalServerError)
-			return
-		}
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		w.Write(indexHTML)
-	})
 
 	port := "8080"
 	fmt.Printf("Starting server on http://localhost:%s\n", port)
