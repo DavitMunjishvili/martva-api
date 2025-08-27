@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"strconv"
 	"sync"
 
 	"driving-license-city-api/internal/config"
@@ -21,6 +22,20 @@ type API struct {
 // NewAPI creates a new API.
 func NewAPI(saService *service.SAService) *API {
 	return &API{SAService: saService}
+}
+
+func (a *API) HealthHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	health := struct {
+		Status string `json:"status"`
+	}{
+		Status: "ok",
+	}
+	if err := json.NewEncoder(w).Encode(health); err != nil {
+		log.Printf("Error encoding health check response: %v", err)
+		http.Error(w, "Failed to create health check response", http.StatusInternalServerError)
+	}
 }
 
 // AvailableDatesHandler handles the request for available dates.
@@ -78,16 +93,31 @@ func (a *API) AvailableHoursHandler(w http.ResponseWriter, r *http.Request) {
 	io.Copy(w, resp.Body)
 }
 
-func (a *API) HealthHandler(w http.ResponseWriter, r *http.Request) {
+func (a *API) CityInfoHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
-	health := struct {
-		Status string `json:"status"`
-	}{
-		Status: "ok",
+
+	centerIdStr := r.URL.Query().Get("centerId")
+	centerId, err := strconv.Atoi(centerIdStr)
+	if err != nil {
+		http.Error(w, "Invalid centerId", http.StatusBadRequest)
+		return
 	}
-	if err := json.NewEncoder(w).Encode(health); err != nil {
-		log.Printf("Error encoding health check response: %v", err)
-		http.Error(w, "Failed to create health check response", http.StatusInternalServerError)
+
+	centerName, ok := config.Centers[centerId]
+	if !ok {
+		http.Error(w, "Center not found", http.StatusNotFound)
+		return
+	}
+
+	result, err := a.SAService.FetchDatesForCenterSync(centerId, centerName)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if err := json.NewEncoder(w).Encode(result); err != nil {
+		log.Printf("Error encoding city info: %v", err)
+		http.Error(w, "Failed to create city info response", http.StatusInternalServerError)
 	}
 }
