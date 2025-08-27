@@ -1,3 +1,3 @@
-module driving-license-exams
+module driving-license-city-api
 
-go 1.24.4
+go 1.22.4
