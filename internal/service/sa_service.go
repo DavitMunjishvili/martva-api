@@ -23,31 +23,34 @@ func NewSAService(client *http.Client) *SAService {
 func (s *SAService) FetchDatesForCenter(centerID int, centerName string, ch chan<- models.CenterResult, wg *sync.WaitGroup) {
 	defer wg.Done()
 
+	result, err := s.FetchDatesForCenterSync(centerID, centerName)
+	if err != nil {
+		result.Error = err.Error()
+	}
+
+	ch <- result
+}
+
+// FetchDatesForCenterSync fetches available dates for a given center synchronously.
+func (s *SAService) FetchDatesForCenterSync(centerID int, centerName string) (models.CenterResult, error) {
 	url := fmt.Sprintf("https://api-my.sa.gov.ge/api/v1/DrivingLicensePracticalExams2/DrivingLicenseExamsDates2?CategoryCode=4&CenterId=%d", centerID)
-	result := models.CenterResult{CenterName: centerName}
+	result := models.CenterResult{CenterName: centerName, CenterID: centerID}
 
 	resp, err := s.Client.Get(url)
 	if err != nil {
-		result.Error = fmt.Sprintf("Error fetching data: %v", err)
-		ch <- result
-		return
+		return result, fmt.Errorf("error fetching data: %v", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		result.Error = fmt.Sprintf("API returned non-200 status: %s", resp.Status)
-		ch <- result
-		return
+		return result, fmt.Errorf("API returned non-200 status: %s", resp.Status)
 	}
 
 	var datesResponse []models.AvailableDate
 	if err := json.NewDecoder(resp.Body).Decode(&datesResponse); err != nil {
-		result.Error = fmt.Sprintf("Error decoding JSON: %v", err)
-		ch <- result
-		return
+		return result, fmt.Errorf("error decoding JSON: %v", err)
 	}
 
 	result.Dates = datesResponse
-	result.CenterID = centerID
-	ch <- result
+	return result, nil
 }
