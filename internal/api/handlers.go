@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strconv"
 	"sync"
+	"time"
 
 	"driving-license-city-api/internal/config"
 	"driving-license-city-api/internal/models"
@@ -28,9 +29,11 @@ func (a *API) HealthHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	health := struct {
-		Status string `json:"status"`
+		Status     string `json:"status"`
+		ServerTime string `json:"serverTime"`
 	}{
-		Status: "ok",
+		Status:     "ok",
+		ServerTime: time.Now().Format(time.RFC3339),
 	}
 	if err := json.NewEncoder(w).Encode(health); err != nil {
 		log.Printf("Error encoding health check response: %v", err)
