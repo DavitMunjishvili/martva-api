@@ -33,7 +33,7 @@ func (s *SAService) FetchDatesForCenter(centerID int, centerName string, ch chan
 
 // FetchDatesForCenterSync fetches available dates for a given center synchronously.
 func (s *SAService) FetchDatesForCenterSync(centerID int, centerName string) (models.CenterResult, error) {
-	url := fmt.Sprintf("https://api-my.sa.gov.ge/api/v1/DrivingLicensePracticalExams2/DrivingLicenseExamsDates2?CategoryCode=4&CenterId=%d", centerID)
+	url := fmt.Sprintf("https://api-bookings.sa.gov.ge/api/v1/DrivingLicensePracticalExams2/DrivingLicenseExamsDates2?CategoryCode=4&CenterId=%d", centerID)
 	result := models.CenterResult{CenterName: centerName, CenterID: centerID}
 
 	resp, err := s.Client.Get(url)

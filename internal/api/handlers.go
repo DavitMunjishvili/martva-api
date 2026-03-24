@@ -75,7 +75,7 @@ func (a *API) AvailableHoursHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	url := fmt.Sprintf("https://api-my.sa.gov.ge/api/v1/DrivingLicensePracticalExams2/DrivingLicenseExamsDateFrames2?CategoryCode=4&CenterId=%s&ExamDate=%s", centerId, examDate)
+	url := fmt.Sprintf("https://api-bookings.sa.gov.ge/api/v1/DrivingLicensePracticalExams2/DrivingLicenseExamsDateFrames2?CategoryCode=4&CenterId=%s&ExamDate=%s", centerId, examDate)
 
 	resp, err := a.SAService.Client.Get(url)
 	if err != nil {
